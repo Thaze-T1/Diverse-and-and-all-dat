@@ -3,91 +3,107 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>THE LOBBY | Version 5.1</title>
+    <title>THE LOBBY | v5.2</title>
     <style>
         :root { --bg: #050505; --card: #111; --accent: #00ff41; --vid-blue: #00d4ff; --text: #ddd; }
-        body { font-family: 'Courier New', monospace; background: var(--bg); color: var(--text); padding: 20px; margin: 0; }
+        body { font-family: sans-serif; background: var(--bg); color: var(--text); padding: 20px; }
         .container { max-width: 1100px; margin: 0 auto; }
         
-        /* IF YOU SEE THIS GREEN BORDER, THE NEW CODE IS LIVE */
-        .search-area { 
-            background: var(--card); 
-            padding: 20px; 
-            border: 3px solid var(--accent); 
-            border-radius: 8px; 
-            margin-bottom: 20px; 
-        }
+        .search-area { background: var(--card); padding: 20px; border: 2px solid #333; border-radius: 8px; margin-bottom: 20px; }
+        #extract-btn { background: var(--accent); color: #000; border: none; padding: 15px; width: 100%; font-weight: bold; cursor: pointer; display: none; margin-top: 10px; }
 
-        #extract-btn { background: white; color: black; border: none; padding: 15px; width: 100%; font-weight: bold; cursor: pointer; display: none; margin-top: 15px; }
-        #results-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 20px; }
+        #results-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 15px; }
         
-        .media-card { background: #1a1a1a; border: 1px solid #333; border-radius: 6px; cursor: pointer; overflow: hidden; }
-        .is-video { border: 3px solid var(--vid-blue) !important; }
+        /* THE BLUE LINE LOGIC */
+        .media-card { background: #1a1a1a; border: 1px solid #333; border-radius: 6px; cursor: pointer; transition: 0.3s; padding: 5px; }
+        .is-video { border: 3px solid var(--vid-blue) !important; box-shadow: 0 0 15px var(--vid-blue); }
 
-        .preview-box { width: 100%; aspect-ratio: 16/9; background: #000; }
+        .preview-box { width: 100%; aspect-ratio: 16/9; background: #000; overflow: hidden; border-radius: 4px; }
         .preview-box img { width: 100%; height: 100%; object-fit: cover; }
 
         /* POPUP */
-        #lightbox { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); z-index: 10000; justify-content: center; align-items: center; }
-        .lightbox-content { width: 90%; max-width: 1000px; height: 80vh; background: #000; border: 1px solid var(--accent); }
-        iframe { width: 100%; height: 100%; border: none; }
+        #lightbox { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 10000; justify-content: center; align-items: center; }
+        .lightbox-content { width: 90%; height: 85%; background: #000; border: 2px solid var(--accent); position: relative; }
+        iframe { width: 100%; height: 100%; border: none; background: white; }
+        .close-btn { position: absolute; top: -40px; right: 0; color: white; cursor: pointer; font-weight: bold; }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <h1 style="text-align:center; color:var(--accent);">SYSTEM ONLINE: V5.1</h1>
+    <h1 style="text-align:center; color:var(--accent);">THE LOBBY v5.2</h1>
     
     <div class="search-area">
         <script async src="https://cse.google.com/cse.js?cx=25f8990bec5e845a4"></script>
         <div class="gcse-search"></div>
-        <button id="extract-btn" onclick="runExtraction()">ACTIVATE SCANNER</button>
+        <button id="extract-btn" onclick="runExtraction()">⚡ EXECUTE GLOBAL SCAN</button>
     </div>
 
     <div id="results-grid"></div>
 </div>
 
 <div id="lightbox" onclick="this.style.display='none'">
-    <div class="lightbox-content" id="viewer" onclick="event.stopPropagation()"></div>
+    <div class="lightbox-content" id="viewer" onclick="event.stopPropagation()">
+        <div class="close-btn">CLOSE [X]</div>
+    </div>
 </div>
 
 <script>
 function runExtraction() {
-    const googleResults = document.querySelectorAll('.gsc-webResult');
+    console.log("Scanner Initialized...");
+    const googleItems = document.querySelectorAll('.gsc-result');
     const grid = document.getElementById('results-grid');
-    grid.innerHTML = '';
+    
+    if (googleItems.length === 0) {
+        alert("No targets found in current perimeter. Try searching first.");
+        return;
+    }
 
-    googleResults.forEach(res => {
-        const title = res.querySelector('a.gs-title').textContent;
-        const link = res.querySelector('a.gs-title').href;
-        const thumb = res.querySelector('img.gs-image')?.src || 'https://via.placeholder.com/300x160?text=NO+IMAGE';
+    grid.innerHTML = ''; // Clear Lobby
+
+    googleItems.forEach(item => {
+        const anchor = item.querySelector('a.gs-title');
+        if (!anchor) return;
+
+        const title = anchor.innerText;
+        const url = anchor.href;
+        const imgObj = item.querySelector('img.gs-image');
+        const thumb = imgObj ? imgObj.src : 'https://via.placeholder.com/300x160?text=NO+DATA';
         
-        // DETECTION logic
-        const isVid = link.toLowerCase().includes('video') || link.includes('youtube') || link.includes('watch');
+        // BETTER VIDEO DETECTION
+        const check = url.toLowerCase();
+        const isVid = check.includes('video') || check.includes('watch') || check.includes('youtube') || check.includes('mugen') || check.includes('clip');
         
         const card = document.createElement('div');
         card.className = `media-card ${isVid ? 'is-video' : ''}`;
+        
         card.onclick = () => {
-            const view = document.getElementById('viewer');
             document.getElementById('lightbox').style.display = 'flex';
-            // Use the link directly in the popup
-            view.innerHTML = `<iframe src="${link}"></iframe>`;
+            document.getElementById('viewer').innerHTML = `
+                <div class="close-btn" onclick="document.getElementById('lightbox').style.display='none'">CLOSE [X]</div>
+                <iframe src="${url}"></iframe>
+            `;
         };
 
         card.innerHTML = `
             <div class="preview-box"><img src="${thumb}"></div>
-            <div style="padding:10px;">
-                <strong style="font-size:12px;">${title}</strong>
-                <p style="font-size:10px; color:${isVid ? 'var(--vid-blue)' : '#777'}">${isVid ? 'VIDEO DETECTED' : 'IMAGE/SITE'}</p>
+            <div style="padding:8px;">
+                <div style="font-size:11px; font-weight:bold; height:34px; overflow:hidden;">${title}</div>
+                <div style="font-size:9px; color:${isVid ? 'var(--vid-blue)' : '#666'}; margin-top:5px;">
+                    ${isVid ? '▼ VIDEO SOURCE DETECTED' : '■ STATIC ASSET'}
+                </div>
             </div>
         `;
         grid.appendChild(card);
     });
+    
+    window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
 }
 
-// Watch for Google
+// Watch for search results to appear
 const observer = new MutationObserver(() => {
-    if (document.querySelector('.gsc-results-wrapper-visible')) {
+    const check = document.querySelector('.gsc-results-wrapper-visible');
+    if (check) {
         document.getElementById('extract-btn').style.display = 'block';
     }
 });
