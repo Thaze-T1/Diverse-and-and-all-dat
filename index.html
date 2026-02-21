@@ -3,108 +3,126 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>THE LOBBY | v5.2</title>
+    <title>THE LOBBY | v7.0</title>
     <style>
         :root { --bg: #050505; --card: #111; --accent: #00ff41; --vid-blue: #00d4ff; --text: #ddd; }
-        body { font-family: sans-serif; background: var(--bg); color: var(--text); padding: 20px; }
-        .container { max-width: 1100px; margin: 0 auto; }
+        body { font-family: 'Courier New', monospace; background: var(--bg); color: var(--text); padding: 20px; overflow-x: hidden; }
+        .container { max-width: 1200px; margin: 0 auto; }
         
-        .search-area { background: var(--card); padding: 20px; border: 2px solid #333; border-radius: 8px; margin-bottom: 20px; }
-        #extract-btn { background: var(--accent); color: #000; border: none; padding: 15px; width: 100%; font-weight: bold; cursor: pointer; display: none; margin-top: 10px; }
+        /* HIDE GOOGLE'S MESSY UI */
+        .gsc-results-wrapper-visible { display: none !important; }
+        .gsc-control-cse { background: transparent !important; border: none !important; padding: 0 !important; }
 
-        #results-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 15px; }
+        .search-area { background: var(--card); padding: 20px; border: 1px solid #333; border-radius: 8px; margin-bottom: 20px; position: sticky; top: 10px; z-index: 100; }
+        #extract-btn { background: var(--accent); color: #000; border: none; padding: 12px; width: 100%; font-weight: bold; cursor: pointer; display: none; margin-top: 10px; }
+
+        /* THE ONLY RESULT AREA */
+        #results-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 20px; margin-top: 20px; }
         
-        /* THE BLUE LINE LOGIC */
-        .media-card { background: #1a1a1a; border: 1px solid #333; border-radius: 6px; cursor: pointer; transition: 0.3s; padding: 5px; }
-        .is-video { border: 3px solid var(--vid-blue) !important; box-shadow: 0 0 15px var(--vid-blue); }
+        .media-card { background: #151515; border: 1px solid #333; border-radius: 8px; overflow: hidden; transition: 0.3s; cursor: pointer; position: relative; }
+        .is-video { border: 2px solid var(--vid-blue); box-shadow: 0 0 10px rgba(0, 212, 255, 0.2); }
+        .media-card:hover { border-color: white; transform: scale(1.02); }
 
-        .preview-box { width: 100%; aspect-ratio: 16/9; background: #000; overflow: hidden; border-radius: 4px; }
+        .preview-box { width: 100%; aspect-ratio: 16/9; background: #000; display: flex; align-items: center; justify-content: center; }
         .preview-box img { width: 100%; height: 100%; object-fit: cover; }
+        
+        .info { padding: 10px; font-size: 12px; }
+        .info strong { display: block; height: 35px; overflow: hidden; color: #fff; }
 
-        /* POPUP */
-        #lightbox { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 10000; justify-content: center; align-items: center; }
-        .lightbox-content { width: 90%; height: 85%; background: #000; border: 2px solid var(--accent); position: relative; }
-        iframe { width: 100%; height: 100%; border: none; background: white; }
-        .close-btn { position: absolute; top: -40px; right: 0; color: white; cursor: pointer; font-weight: bold; }
+        /* FULLSCREEN VIEWER (The "Enlarger") */
+        #viewer-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); z-index: 99999; justify-content: center; align-items: center; flex-direction: column; }
+        .viewer-box { width: 90%; max-width: 1000px; position: relative; }
+        .viewer-box img, .viewer-box video, .viewer-box iframe { width: 100%; border-radius: 8px; border: 1px solid var(--accent); box-shadow: 0 0 30px rgba(0,255,65,0.2); }
+        .close-msg { margin-top: 20px; color: #666; font-size: 12px; cursor: pointer; }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <h1 style="text-align:center; color:var(--accent);">THE LOBBY v5.2</h1>
+    <h1 style="text-align:center; letter-spacing:8px; color:var(--accent);">THE LOBBY</h1>
     
     <div class="search-area">
         <script async src="https://cse.google.com/cse.js?cx=25f8990bec5e845a4"></script>
         <div class="gcse-search"></div>
-        <button id="extract-btn" onclick="runExtraction()">⚡ EXECUTE GLOBAL SCAN</button>
+        <button id="extract-btn" onclick="extractData()">SYNC DATA TO GRID</button>
     </div>
 
-    <div id="results-grid"></div>
+    <div id="results-grid">
+        <p style="text-align:center; color:#555;">Waiting for user query...</p>
+    </div>
 </div>
 
-<div id="lightbox" onclick="this.style.display='none'">
-    <div class="lightbox-content" id="viewer" onclick="event.stopPropagation()">
-        <div class="close-btn">CLOSE [X]</div>
-    </div>
+<div id="viewer-overlay" onclick="closeViewer()">
+    <div class="viewer-box" id="content-anchor" onclick="event.stopPropagation()"></div>
+    <div class="close-msg">CLICK ANYWHERE TO DISMISS</div>
 </div>
 
 <script>
-function runExtraction() {
-    console.log("Scanner Initialized...");
-    const googleItems = document.querySelectorAll('.gsc-result');
+function extractData() {
+    const rawResults = document.querySelectorAll('.gsc-webResult, .gsc-imageResult');
     const grid = document.getElementById('results-grid');
     
-    if (googleItems.length === 0) {
-        alert("No targets found in current perimeter. Try searching first.");
-        return;
-    }
+    if (rawResults.length === 0) return;
+    grid.innerHTML = ''; // Wipe the "loading" message
 
-    grid.innerHTML = ''; // Clear Lobby
-
-    googleItems.forEach(item => {
-        const anchor = item.querySelector('a.gs-title');
-        if (!anchor) return;
-
-        const title = anchor.innerText;
-        const url = anchor.href;
-        const imgObj = item.querySelector('img.gs-image');
-        const thumb = imgObj ? imgObj.src : 'https://via.placeholder.com/300x160?text=NO+DATA';
+    rawResults.forEach(res => {
+        const title = res.querySelector('a.gs-title')?.innerText || "Unknown";
+        const link = res.querySelector('a.gs-title')?.href;
+        // Grab the high-res thumb if possible
+        const thumb = res.querySelector('img.gs-image')?.src || '';
         
-        // BETTER VIDEO DETECTION
-        const check = url.toLowerCase();
-        const isVid = check.includes('video') || check.includes('watch') || check.includes('youtube') || check.includes('mugen') || check.includes('clip');
-        
+        if (!link) return;
+
+        // VIDEO DETECTION (No dorking, just labeling)
+        const vidTags = ['video', 'watch', 'clip', 'mp4', '.gif', 'mugen', 'gamebanana'];
+        const isVid = vidTags.some(t => link.toLowerCase().includes(t) || title.toLowerCase().includes(t));
+
         const card = document.createElement('div');
         card.className = `media-card ${isVid ? 'is-video' : ''}`;
         
-        card.onclick = () => {
-            document.getElementById('lightbox').style.display = 'flex';
-            document.getElementById('viewer').innerHTML = `
-                <div class="close-btn" onclick="document.getElementById('lightbox').style.display='none'">CLOSE [X]</div>
-                <iframe src="${url}"></iframe>
-            `;
-        };
+        // When clicked, try to extract the media
+        card.onclick = () => launchViewer(link, thumb, isVid);
 
         card.innerHTML = `
-            <div class="preview-box"><img src="${thumb}"></div>
-            <div style="padding:8px;">
-                <div style="font-size:11px; font-weight:bold; height:34px; overflow:hidden;">${title}</div>
-                <div style="font-size:9px; color:${isVid ? 'var(--vid-blue)' : '#666'}; margin-top:5px;">
-                    ${isVid ? '▼ VIDEO SOURCE DETECTED' : '■ STATIC ASSET'}
-                </div>
+            <div class="preview-box">
+                <img src="${thumb || 'https://via.placeholder.com/300x170?text=NO+PREVIEW'}">
+            </div>
+            <div class="info">
+                <strong>${title.substring(0, 50)}...</strong>
+                <span style="color:${isVid ? 'var(--vid-blue)' : '#666'}">${isVid ? '● MEDIA' : '○ PAGE'}</span>
             </div>
         `;
         grid.appendChild(card);
     });
-    
-    window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
 }
 
-// Watch for search results to appear
+function launchViewer(url, thumb, isVid) {
+    const anchor = document.getElementById('content-anchor');
+    document.getElementById('viewer-overlay').style.display = 'flex';
+    
+    // STRATEGY: If it's a known video host, use embed. If not, try to show the biggest image found.
+    if (url.includes('youtube.com')) {
+        const id = url.split('v=')[1]?.split('&')[0];
+        anchor.innerHTML = `<iframe height="500" src="https://www.youtube.com/embed/${id}?autoplay=1" allowfullscreen></iframe>`;
+    } else if (url.match(/\.(jpeg|jpg|gif|png|webp)$/i)) {
+        anchor.innerHTML = `<img src="${url}">`;
+    } else {
+        // FALLBACK: Load the site, but inside our custom enlarger
+        anchor.innerHTML = `<iframe height="600" src="${url}"></iframe>`;
+    }
+}
+
+function closeViewer() {
+    document.getElementById('viewer-overlay').style.display = 'none';
+    document.getElementById('content-anchor').innerHTML = '';
+}
+
+// Watcher for Google Search
 const observer = new MutationObserver(() => {
-    const check = document.querySelector('.gsc-results-wrapper-visible');
-    if (check) {
+    if (document.querySelector('.gsc-results-wrapper-visible')) {
         document.getElementById('extract-btn').style.display = 'block';
+        // Auto-extract when user presses Enter
+        extractData(); 
     }
 });
 observer.observe(document.body, { childList: true, subtree: true });
