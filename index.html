@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>The Lobby | Content Hub</title>
+    <style>
+        body { font-family: sans-serif; background: #1a1a1a; color: white; text-align: center; }
+        .search-container { margin: 50px auto; width: 80%; max-width: 600px; }
+        #results { margin-top: 20px; display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 20px; padding: 20px; }
+        .card { background: #2a2a2a; border-radius: 10px; padding: 15px; border: 1px solid #444; }
+        .fav-btn { background: #ff4757; color: white; border: none; padding: 5px 10px; cursor: pointer; border-radius: 5px; margin-top: 10px; }
+    </style>
+</head>
+<body>
+
+    <h1>THE LOBBY</h1>
+    <p>Global Content Access Point</p>
+
+    <div class="search-container">
+        <div class="gcse-search"></div>
+    </div>
+
+    <div id="results">
+        </div>
+
+    <script>
+        // Simple "Favorite" logic using LocalStorage (No Account Needed)
+        function saveToFavorites(url, title) {
+            let favs = JSON.parse(localStorage.getItem('myFavs')) || [];
+            favs.push({url, title});
+            localStorage.setItem('myFavs', JSON.stringify(favs));
+            alert('Saved to your local vault, Agent.');
+        }
+    </script>
+
+    <script async src="https://cse.google.com/cse.js?cx=25f8990bec5e845a4"></script>
+</body>
+</html>
