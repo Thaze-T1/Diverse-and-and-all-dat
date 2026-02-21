@@ -3,36 +3,38 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>THE LOBBY | v9.0</title>
+    <title>THE LOBBY | v10.0</title>
     <style>
         :root { --bg: #050505; --card: #111; --accent: #00ff41; --vid-blue: #00d4ff; --text: #ddd; }
         body { font-family: 'Courier New', monospace; background: var(--bg); color: var(--text); padding: 20px; }
         .container { max-width: 1100px; margin: 0 auto; }
         
-        /* HEADER */
         h1 { text-align: center; letter-spacing: 10px; color: var(--accent); border-bottom: 1px solid #222; padding-bottom: 15px; }
 
-        /* SEARCH AREA - Ensuring Tabs stay visible */
+        /* SEARCH INTERFACE */
         .search-sector { background: #111; padding: 15px; border: 1px solid var(--accent); border-radius: 8px; margin-bottom: 20px; }
         
-        /* SKINNING THE GOOGLE TABS */
-        .gsc-tabsArea { border-bottom: 1px solid #333 !important; margin-bottom: 10px !important; }
-        .gsc-tabHeader { color: #888 !important; padding: 10px !important; }
+        /* GOOGLE UI SKINNING */
+        .gsc-tabsArea { border-bottom: 1px solid #333 !important; }
+        .gsc-tabHeader { color: #888 !important; }
         .gsc-tabHeader.gsc-tabhActive { color: var(--accent) !important; border-bottom: 2px solid var(--accent) !important; }
 
         /* THE GRID */
         #extraction-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 20px; margin-top: 30px; }
         .media-card { background: #151515; border: 1px solid #333; border-radius: 8px; cursor: pointer; transition: 0.3s; padding: 10px; }
-        .media-card:hover { border-color: white; box-shadow: 0 0 15px rgba(255,255,255,0.1); }
+        .media-card:hover { border-color: white; box-shadow: 0 0 15px rgba(0,255,65,0.1); }
         .is-video { border: 2px solid var(--vid-blue) !important; }
 
         .thumb-box { width: 100%; aspect-ratio: 16/9; background: #000; overflow: hidden; border-radius: 4px; margin-bottom: 10px; }
         .thumb-box img { width: 100%; height: 100%; object-fit: cover; }
 
-        /* OVERLAY */
-        #viewer-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 99999; justify-content: center; align-items: center; }
-        .viewer-box { width: 90%; height: 85%; background: #000; border: 1px solid var(--accent); }
+        /* ENLARGER / VIEWER */
+        #viewer-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); z-index: 99999; justify-content: center; align-items: center; flex-direction: column; }
+        .viewer-box { width: 90%; height: 85%; background: #000; border: 1px solid var(--accent); position: relative; display: flex; align-items: center; justify-content: center; }
         iframe { width: 100%; height: 100%; border: none; background: #fff; }
+        
+        .force-btn { position: absolute; bottom: 20px; background: var(--accent); color: #000; padding: 10px 20px; text-decoration: none; font-weight: bold; font-size: 12px; border-radius: 4px; z-index: 100; }
+        .close-hint { margin-top: 15px; color: #555; font-size: 11px; }
 
         #scan-control { background: var(--accent); color: #000; border: none; padding: 12px; width: 100%; font-weight: bold; cursor: pointer; margin-top: 10px; display: none; border-radius: 4px; }
     </style>
@@ -43,23 +45,23 @@
     <h1>THE LOBBY</h1>
     
     <div class="search-sector">
-        <script async src="https://cse.google.com/cse.js?cx=25f8990bec5e845a4"></script>
+        <script async src="https://cse.google.com/cse.js?cx=INSERT_YOUR_ID_HERE"></script>
         <div class="gcse-search"></div>
         <button id="scan-control" onclick="syncLobby()">⚡ RE-SYNC LOBBY VIEW</button>
     </div>
 
     <div id="extraction-grid">
-        <p style="text-align:center; color:#444; grid-column: 1/-1;">Initiate Search to start extraction.</p>
+        <p style="text-align:center; color:#444; grid-column: 1/-1;">Ready for target input...</p>
     </div>
 </div>
 
-<div id="viewer-overlay" onclick="this.style.display='none'">
+<div id="viewer-overlay" onclick="closeViewer()">
     <div class="viewer-box" id="viewer-load" onclick="event.stopPropagation()"></div>
+    <div class="close-hint">CLICK OUTSIDE TO DISCONNECT</div>
 </div>
 
 <script>
 function syncLobby() {
-    // Looks for results in BOTH Web and Image tabs
     const results = document.querySelectorAll('.gsc-webResult, .gsc-imageResult');
     const grid = document.getElementById('extraction-grid');
     
@@ -68,43 +70,60 @@ function syncLobby() {
 
     results.forEach(res => {
         const anchor = res.querySelector('a.gs-title') || res.querySelector('a.gs-image-box');
-        const title = res.querySelector('.gs-title')?.innerText || "Untitled Data";
+        const title = res.querySelector('.gs-title')?.innerText || "Classified Asset";
         const url = anchor?.href;
         const thumb = res.querySelector('img.gs-image')?.src || '';
         
         if (!url || !thumb) return;
 
-        // Video Detection
         const isVid = url.includes('video') || url.includes('watch') || url.includes('mugen') || url.includes('gamebanana') || url.includes('clip');
 
         const card = document.createElement('div');
         card.className = `media-card ${isVid ? 'is-video' : ''}`;
-        card.onclick = () => {
-            document.getElementById('viewer-overlay').style.display = 'flex';
-            const viewer = document.getElementById('viewer-load');
-            // Check for YouTube specific embed
-            if (url.includes('youtube.com')) {
-                const id = url.split('v=')[1]?.split('&')[0];
-                viewer.innerHTML = `<iframe src="https://www.youtube.com/embed/${id}?autoplay=1" allowfullscreen></iframe>`;
-            } else {
-                viewer.innerHTML = `<iframe src="${url}"></iframe>`;
-            }
-        };
+        card.onclick = () => launchViewer(url, thumb, isVid);
 
         card.innerHTML = `
             <div class="thumb-box"><img src="${thumb}"></div>
             <strong style="font-size:11px; display:block; height:30px; overflow:hidden;">${title}</strong>
-            <span style="font-size:9px; color:${isVid ? 'var(--vid-blue)' : '#555'}">${isVid ? '▶ MEDIA' : '📷 IMAGE/SITE'}</span>
+            <span style="font-size:9px; color:${isVid ? 'var(--vid-blue)' : '#555'}">${isVid ? '▶ MEDIA SOURCE' : '📷 STATIC ASSET'}</span>
         `;
         grid.appendChild(card);
     });
 }
 
+function launchViewer(url, thumb, isVid) {
+    const viewer = document.getElementById('viewer-load');
+    document.getElementById('viewer-overlay').style.display = 'flex';
+    
+    if (url.includes('youtube.com')) {
+        const id = url.split('v=')[1]?.split('&')[0];
+        viewer.innerHTML = `<iframe src="https://www.youtube.com/embed/${id}?autoplay=1" allowfullscreen></iframe>`;
+    } 
+    else if (isVid) {
+        // Iframe for videos with a "Bypass" button
+        viewer.innerHTML = `
+            <iframe src="${url}"></iframe>
+            <a href="${url}" target="_blank" class="force-btn">JUMP THE WALL (OPEN IN NEW TAB)</a>`;
+    } 
+    else {
+        // GOOGLE PROXY: Using Google's own servers to fetch the image and bypass blocks
+        const proxyUrl = `https://images1-focus-opensocial.googleusercontent.com/gadgets/proxy?container=focus&refresh=2592000&url=${encodeURIComponent(url)}`;
+        
+        viewer.innerHTML = `
+            <img src="${proxyUrl}" onerror="this.src='${thumb}'" style="max-width:100%; max-height:100%; object-fit:contain;">
+            <a href="${url}" target="_blank" class="force-btn" style="bottom: -50px; background: transparent; color: #555;">SOURCE PAGE</a>`;
+    }
+}
+
+function closeViewer() {
+    document.getElementById('viewer-overlay').style.display = 'none';
+    document.getElementById('viewer-load').innerHTML = '';
+}
+
 const observer = new MutationObserver(() => {
     if (document.querySelector('.gsc-results-wrapper-visible')) {
         document.getElementById('scan-control').style.display = 'block';
-        // Give Google a split second to finish before auto-syncing
-        setTimeout(syncLobby, 500); 
+        setTimeout(syncLobby, 600); 
     }
 });
 observer.observe(document.body, { childList: true, subtree: true });
