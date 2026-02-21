@@ -3,117 +3,89 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>THE LOBBY | Media Hub</title>
+    <title>THE LOBBY | Version 5.1</title>
     <style>
         :root { --bg: #050505; --card: #111; --accent: #00ff41; --vid-blue: #00d4ff; --text: #ddd; }
-        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); padding: 20px; margin: 0; }
+        body { font-family: 'Courier New', monospace; background: var(--bg); color: var(--text); padding: 20px; margin: 0; }
         .container { max-width: 1100px; margin: 0 auto; }
-        h1 { text-align: center; letter-spacing: 10px; color: var(--accent); text-transform: uppercase; }
-
-        /* Search UI */
-        .search-area { background: var(--card); padding: 15px; border-radius: 8px; margin-bottom: 20px; border: 1px solid #222; }
-        #extract-btn { background: var(--accent); color: #000; border: none; padding: 12px; width: 100%; font-weight: bold; cursor: pointer; border-radius: 4px; display: none; margin-top: 10px; }
-
-        /* Grid */
-        #results-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 20px; }
-        .media-card { background: var(--card); border: 1px solid #333; border-radius: 6px; overflow: hidden; cursor: pointer; transition: 0.2s; }
-        .media-card:hover { border-color: white; }
         
-        /* THE BLUE LINE for Videos */
-        .is-video { border: 2px solid var(--vid-blue) !important; box-shadow: 0 0 10px var(--vid-blue); }
+        /* IF YOU SEE THIS GREEN BORDER, THE NEW CODE IS LIVE */
+        .search-area { 
+            background: var(--card); 
+            padding: 20px; 
+            border: 3px solid var(--accent); 
+            border-radius: 8px; 
+            margin-bottom: 20px; 
+        }
 
-        .preview-box { width: 100%; aspect-ratio: 16/9; background: #000; overflow: hidden; }
+        #extract-btn { background: white; color: black; border: none; padding: 15px; width: 100%; font-weight: bold; cursor: pointer; display: none; margin-top: 15px; }
+        #results-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 20px; }
+        
+        .media-card { background: #1a1a1a; border: 1px solid #333; border-radius: 6px; cursor: pointer; overflow: hidden; }
+        .is-video { border: 3px solid var(--vid-blue) !important; }
+
+        .preview-box { width: 100%; aspect-ratio: 16/9; background: #000; }
         .preview-box img { width: 100%; height: 100%; object-fit: cover; }
-        .info-box { padding: 12px; font-size: 13px; }
 
-        /* LIGHTBOX / POP-UP */
-        #lightbox { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 9999; justify-content: center; align-items: center; }
-        .lightbox-content { width: 80%; max-width: 900px; background: #000; border: 2px solid var(--accent); position: relative; }
-        .lightbox-content iframe, .lightbox-content img, .lightbox-content video { width: 100%; aspect-ratio: 16/9; display: block; border: none; }
-        .close-hint { position: absolute; bottom: -30px; left: 50%; transform: translateX(-50%); color: #888; font-size: 12px; }
+        /* POPUP */
+        #lightbox { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); z-index: 10000; justify-content: center; align-items: center; }
+        .lightbox-content { width: 90%; max-width: 1000px; height: 80vh; background: #000; border: 1px solid var(--accent); }
+        iframe { width: 100%; height: 100%; border: none; }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <h1>THE LOBBY</h1>
+    <h1 style="text-align:center; color:var(--accent);">SYSTEM ONLINE: V5.1</h1>
+    
     <div class="search-area">
         <script async src="https://cse.google.com/cse.js?cx=25f8990bec5e845a4"></script>
         <div class="gcse-search"></div>
-        <button id="extract-btn" onclick="runExtraction()">SCAN PERIMETER & DEPLOY</button>
+        <button id="extract-btn" onclick="runExtraction()">ACTIVATE SCANNER</button>
     </div>
+
     <div id="results-grid"></div>
 </div>
 
-<div id="lightbox" onclick="closeLightbox()">
-    <div class="lightbox-content" onclick="event.stopPropagation()">
-        <div id="viewer-load"></div>
-        <span class="close-hint">CLICK ANYWHERE OUTSIDE TO EXIT</span>
-    </div>
+<div id="lightbox" onclick="this.style.display='none'">
+    <div class="lightbox-content" id="viewer" onclick="event.stopPropagation()"></div>
 </div>
 
 <script>
-function getDirectUrl(url) {
-    try { return new URL(url).searchParams.get('q') || url; } catch { return url; }
-}
-
-function closeLightbox() {
-    document.getElementById('lightbox').style.display = 'none';
-    document.getElementById('viewer-load').innerHTML = '';
-}
-
-function openMedia(url, type) {
-    const viewer = document.getElementById('viewer-load');
-    const lightbox = document.getElementById('lightbox');
-    lightbox.style.display = 'flex';
-
-    if (type === 'video') {
-        // Simple YouTube logic
-        if (url.includes('youtube.com')) {
-            const vid = url.split('v=')[1]?.split('&')[0];
-            viewer.innerHTML = `<iframe src="https://www.youtube.com/embed/${vid}?autoplay=1" allowfullscreen allow="autoplay"></iframe>`;
-        } else {
-            // Generic frame for other sites (Mugen, Gamebanana, etc)
-            viewer.innerHTML = `<iframe src="${url}"></iframe>`;
-        }
-    } else {
-        viewer.innerHTML = `<img src="${url}" style="object-fit:contain;">`;
-    }
-}
-
-async function runExtraction() {
-    const items = document.querySelectorAll('.gsc-webResult');
+function runExtraction() {
+    const googleResults = document.querySelectorAll('.gsc-webResult');
     const grid = document.getElementById('results-grid');
     grid.innerHTML = '';
 
-    items.forEach(item => {
-        const title = item.querySelector('a.gs-title').textContent;
-        const url = getDirectUrl(item.querySelector('a.gs-title').href);
-        const thumb = item.querySelector('img.gs-image')?.src;
+    googleResults.forEach(res => {
+        const title = res.querySelector('a.gs-title').textContent;
+        const link = res.querySelector('a.gs-title').href;
+        const thumb = res.querySelector('img.gs-image')?.src || 'https://via.placeholder.com/300x160?text=NO+IMAGE';
         
-        // DETECTION: Is it a video?
-        const isVideo = url.includes('video') || url.includes('youtube') || url.includes('watch') || url.includes('clip');
-        const mediaType = isVideo ? 'video' : 'image';
-
+        // DETECTION logic
+        const isVid = link.toLowerCase().includes('video') || link.includes('youtube') || link.includes('watch');
+        
         const card = document.createElement('div');
-        card.className = `media-card ${isVideo ? 'is-video' : ''}`;
-        card.onclick = () => openMedia(url, mediaType);
-        
+        card.className = `media-card ${isVid ? 'is-video' : ''}`;
+        card.onclick = () => {
+            const view = document.getElementById('viewer');
+            document.getElementById('lightbox').style.display = 'flex';
+            // Use the link directly in the popup
+            view.innerHTML = `<iframe src="${link}"></iframe>`;
+        };
+
         card.innerHTML = `
-            <div class="preview-box">
-                <img src="${thumb || 'https://via.placeholder.com/300x200?text=NO+PREVIEW'}" loading="lazy">
-            </div>
-            <div class="info-box">
-                <strong>${title.substring(0, 60)}...</strong>
-                <div style="font-size:10px; margin-top:5px; color:${isVideo ? 'var(--vid-blue)' : '#888'}">
-                    ${isVideo ? '▶ VIDEO DETECTED' : '📷 STATIC CONTENT'}
-                </div>
+            <div class="preview-box"><img src="${thumb}"></div>
+            <div style="padding:10px;">
+                <strong style="font-size:12px;">${title}</strong>
+                <p style="font-size:10px; color:${isVid ? 'var(--vid-blue)' : '#777'}">${isVid ? 'VIDEO DETECTED' : 'IMAGE/SITE'}</p>
             </div>
         `;
         grid.appendChild(card);
     });
 }
 
+// Watch for Google
 const observer = new MutationObserver(() => {
     if (document.querySelector('.gsc-results-wrapper-visible')) {
         document.getElementById('extract-btn').style.display = 'block';
