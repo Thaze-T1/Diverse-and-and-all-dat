@@ -3,103 +3,104 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>THE LOBBY | Universal Content Hub</title>
+    <title>THE LOBBY | Deep Scraper</title>
     <style>
-        :root { --bg: #0a0a0a; --card: #161616; --accent: #00ff41; --text: #eee; }
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 20px; }
-        h1 { letter-spacing: 5px; color: var(--accent); text-shadow: 0 0 10px var(--accent); }
-        .container { max-width: 1000px; margin: 0 auto; }
+        :root { --bg: #050505; --card: #111; --accent: #00ff41; --text: #ddd; }
+        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); padding: 20px; }
+        .container { max-width: 1100px; margin: 0 auto; }
+        h1 { text-align: center; letter-spacing: 10px; color: var(--accent); border-bottom: 1px solid var(--accent); padding-bottom: 10px; }
         
-        /* Search Bar Styling */
-        .search-box { background: var(--card); padding: 20px; border-radius: 10px; border: 1px solid var(--accent); margin-bottom: 30px; }
+        /* Search UI */
+        .search-area { background: var(--card); padding: 15px; border-radius: 8px; margin-bottom: 20px; border: 1px solid #222; }
+        #extract-btn { background: var(--accent); color: #000; border: none; padding: 12px; width: 100%; font-weight: bold; cursor: pointer; border-radius: 4px; display: none; margin-top: 10px; }
         
-        /* Results Grid */
-        #results-area { display: grid; grid-template-columns: 1fr; gap: 20px; }
-        .media-card { background: var(--card); border: 1px solid #333; border-radius: 8px; overflow: hidden; padding: 15px; transition: 0.3s; }
-        .media-card:hover { border-color: var(--accent); }
+        /* Grid */
+        #results-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 20px; }
+        .media-card { background: var(--card); border: 1px solid #333; border-radius: 6px; overflow: hidden; display: flex; flex-direction: column; transition: 0.2s; }
+        .media-card:hover { border-color: var(--accent); transform: translateY(-3px); }
         
-        /* The Player Frame */
-        .player-container { width: 100%; aspect-ratio: 16/9; background: #000; margin-bottom: 10px; border-radius: 5px; overflow: hidden; }
-        iframe { width: 100%; height: 100%; border: none; }
+        .preview-box { width: 100%; aspect-ratio: 4/3; background: #000; position: relative; overflow: hidden; }
+        .preview-box img, .preview-box video { width: 100%; height: 100%; object-fit: cover; }
         
-        .source-link { color: var(--accent); text-decoration: none; font-size: 0.8em; display: block; margin-top: 10px; border-top: 1px solid #333; padding-top: 5px; }
-        .source-link:hover { text-underline-offset: 3px; text-decoration: underline; }
+        .info-box { padding: 12px; flex-grow: 1; }
+        .info-box strong { font-size: 14px; display: block; margin-bottom: 10px; color: #fff; }
+        .source-tag { font-size: 10px; background: #222; padding: 3px 6px; border-radius: 3px; color: var(--accent); }
+        .access-btn { display: block; text-align: center; background: #333; color: white; text-decoration: none; padding: 8px; margin-top: 10px; font-size: 12px; border-radius: 4px; }
+        .access-btn:hover { background: var(--accent); color: black; }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <header>
-        <h1>THE LOBBY</h1>
-        <p>SECURE ACCESS POINT: INTERNET AGGREGATOR</p>
-    </header>
-
-    <div class="search-box">
+    <h1>THE LOBBY</h1>
+    
+    <div class="search-area">
         <script async src="https://cse.google.com/cse.js?cx=25f8990bec5e845a4"></script>
         <div class="gcse-search"></div>
+        <button id="extract-btn" onclick="runExtraction()">EXTRACT MEDIA FROM TARGETS</button>
     </div>
 
-    <div id="results-area">
-        </div>
+    <div id="results-grid"></div>
 </div>
 
 <script>
-/** * MEDIA SNIFFER LOGIC
- * This script waits for Google to load results, then converts links into players.
- */
-function sniffMedia() {
-    const searchItems = document.querySelectorAll('.gsc-result');
-    
-    searchItems.forEach(item => {
-        const linkElement = item.querySelector('a.gs-title');
-        if (!linkElement) return;
+// Cleans Google's redirect links
+function getDirectUrl(url) {
+    try {
+        const u = new URL(url);
+        return u.searchParams.get('q') || url;
+    } catch { return url; }
+}
 
-        const url = linkElement.href;
-        const title = linkElement.textContent;
+async function runExtraction() {
+    const items = document.querySelectorAll('.gsc-webResult');
+    const grid = document.getElementById('results-grid');
+    grid.innerHTML = ''; // Clear Lobby
+
+    items.forEach(item => {
+        const title = item.querySelector('a.gs-title').textContent;
+        const rawUrl = item.querySelector('a.gs-title').href;
+        const url = getDirectUrl(rawUrl);
+        const domain = new URL(url).hostname;
         
-        // Create our custom card
+        // Find the thumbnail Google already found
+        const googleThumb = item.querySelector('img.gs-image')?.src;
+        
+        let mediaHTML = '';
+
+        // If it's a direct video link (mp4, webm)
+        if (url.match(/\.(mp4|webm|ogg)$/)) {
+            mediaHTML = `<video src="${url}" controls></video>`;
+        } 
+        // If we have a thumbnail from the site (like GameBanana previews)
+        else if (googleThumb) {
+            mediaHTML = `<img src="${googleThumb}" loading="lazy">`;
+        }
+        // Generic Icon if no media found
+        else {
+            mediaHTML = `<div style="height:100%; display:flex; align-items:center; justify-content:center; color:#444;">NO PREVIEW</div>`;
+        }
+
         const card = document.createElement('div');
         card.className = 'media-card';
-        
-        let playerHTML = '';
-
-        // DETECTOR 1: YouTube
-        if (url.includes('youtube.com/watch')) {
-            const videoId = url.split('v=')[1]?.split('&')[0];
-            playerHTML = `<div class="player-container"><iframe src="https://www.youtube.com/embed/${videoId}" allowfullscreen></iframe></div>`;
-        } 
-        // DETECTOR 2: Reddit (Simplified Video Embed)
-        else if (url.includes('reddit.com')) {
-            playerHTML = `<div class="player-container"><iframe src="${url.replace('reddit.com', 'embed.reddit.com')}" sandbox="allow-scripts allow-same-origin"></iframe></div>`;
-        }
-        // DETECTOR 3: General Images
-        else if (url.match(/\.(jpeg|jpg|gif|png)$/) != null) {
-            playerHTML = `<div class="player-container"><img src="${url}" style="width:100%; height:100%; object-fit:contain;"></div>`;
-        }
-        // FALLBACK: Just show a thumbnail or preview icon
-        else {
-            playerHTML = `<div class="player-container" style="display:flex; align-items:center; justify-content:center; color:#555;">[NON-VIDEO CONTENT]</div>`;
-        }
-
         card.innerHTML = `
-            ${playerHTML}
-            <strong>${title}</strong>
-            <a href="${url}" target="_blank" class="source-link">EXTRACT TO ORIGINAL HOST →</a>
+            <div class="preview-box">${mediaHTML}</div>
+            <div class="info-box">
+                <span class="source-tag">${domain}</span>
+                <strong>${title}</strong>
+                <a href="${url}" target="_blank" class="access-btn">GO TO TARGET PAGE</a>
+            </div>
         `;
-
-        document.getElementById('results-area').appendChild(card);
-        // Hide the original ugly Google result
-        item.style.display = 'none';
+        grid.appendChild(card);
     });
 }
 
-// Watch the page for when Google finishes loading results
-const observer = new MutationObserver((mutations) => {
+// Watch for Google results
+const observer = new MutationObserver(() => {
     if (document.querySelector('.gsc-results-wrapper-visible')) {
-        sniffMedia();
+        document.getElementById('extract-btn').style.display = 'block';
     }
 });
-
 observer.observe(document.body, { childList: true, subtree: true });
 </script>
 
